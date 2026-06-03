@@ -21,7 +21,67 @@ add_action('admin_menu', function() {
         'dashicons-groups',
         30
     );
+
+    add_submenu_page(
+        'right-air-crm-settings',
+        'Create CRM Deal',
+        'Create Deal',
+        'manage_options',
+        'right-air-crm-create-deal',
+        'racrm_render_create_deal_page'
+    );
 });
+
+/**
+ * Render the manual Deal creation page
+ */
+function racrm_render_create_deal_page() {
+    $message = '';
+    $order_id = isset($_POST['order_id']) ? sanitize_text_field($_POST['order_id']) : '';
+
+    if (isset($_POST['racrm_manual_create_deal']) && !empty($order_id)) {
+        check_admin_referer('racrm_create_deal_action');
+
+        $result = racrm_create_deal_from_order($order_id);
+
+        if (is_wp_error($result)) {
+            $message = '<div class="error"><p>❌ ' . esc_html($result->get_error_message()) . '</p></div>';
+        } else {
+            $message = sprintf(
+                '<div class="updated">
+                    <p><strong>✅ CRM Deal Created Successfully</strong></p>
+                    <p>Order: %d</p>
+                    <p>Deal Name: %s</p>
+                    <p>CRM Deal ID: %s</p>
+                </div>',
+                $order_id,
+                esc_html($result['Deal_Name']),
+                esc_html($result['id'])
+            );
+        }
+    }
+    ?>
+    <div class="wrap">
+        <h1>Create CRM Deal</h1>
+        <?php echo $message; ?>
+        <p>Manually create a Zoho CRM Deal from an existing WooCommerce Order.</p>
+
+        <form method="post" action="">
+            <?php wp_nonce_field('racrm_create_deal_action'); ?>
+            <table class="form-table">
+                <tr>
+                    <th scope="row"><label for="order_id">Order Number</label></th>
+                    <td>
+                        <input name="order_id" type="number" id="order_id" value="<?php echo esc_attr($order_id); ?>" class="regular-text" required placeholder="e.g. 293666">
+                        <p class="description">Enter the WooCommerce Order ID.</p>
+                    </td>
+                </tr>
+            </table>
+            <?php submit_button('Create CRM Deal', 'primary', 'racrm_manual_create_deal'); ?>
+        </form>
+    </div>
+    <?php
+}
 
 /**
  * Render the settings page

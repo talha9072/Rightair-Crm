@@ -1,6 +1,6 @@
-[2026-06-03 19:04:13] racrm_refresh_access_token() called. client_id=1000.TT27M..., refresh_token_present=yes
-[2026-06-03 19:04:13] Token refresh request URL: https://accounts.zoho.com/oauth/v2/token
-[2026-06-03 19:04:13] Token refresh request parameters: Array
+[2026-06-03 19:30:14] racrm_refresh_access_token() called. client_id=1000.TT27M..., refresh_token_present=yes
+[2026-06-03 19:30:14] Token refresh request URL: https://accounts.zoho.com/oauth/v2/token
+[2026-06-03 19:30:14] Token refresh request parameters: Array
 (
     [grant_type] => refresh_token
     [client_id] => 1000.TT27M566O9I4YLTY7RKI15ICUPG6RG
@@ -8,15 +8,31 @@
     [refresh_token] => 1000.7e953b101e77936eef16849e076f5b00.4d9f0f56be2fdcf3f9e358f371eda3a9
 )
 
-[2026-06-03 19:04:14] 🔁 Token endpoint responded with HTTP code: 200
-[2026-06-03 19:04:14] 🔁 Token endpoint response body: {"access_token":"1000.b783b8f991b723f52ea284222c8d6db1.cdc402692ff16d0f059dbfc5d495fe51","scope":"ZohoCRM.modules.ALL ZohoCRM.settings.ALL ZohoCRM.users.ALL","api_domain":"https://www.zohoapis.com","token_type":"Bearer","expires_in":3600}
-[2026-06-03 19:04:14] 🔐 Access token received from Zoho (before save): 1000.b783b8f991b723f52ea284222c8d6db1.cdc402692ff16d0f059dbfc5d495fe51
-[2026-06-03 19:04:14] update_option('racrm_access_token') returned: true
-[2026-06-03 19:04:14] update_option('racrm_token_expiry') returned: true
-[2026-06-03 19:04:14] update_option('racrm_token_last_refresh') returned: true
-[2026-06-03 19:04:14] Saved access token (from DB): '1000.b783b8f991b723f52ea284222c8d6db1.cdc402692ff16d0f059dbfc5d495fe51'
-[2026-06-03 19:04:14] Saved token expiry (from DB): 1780517054
-[2026-06-03 19:04:14] Connection status after save: connected (expiry=1780517054, now=1780513454)
-[2026-06-03 19:04:14] ✅ Access token refreshed successfully. Expires in 3600s.
-[2026-06-03 19:04:14] Settings page read: access_token_present=yes, token_expiry=1780517054, last_refresh=1780513454
-[2026-06-03 19:04:14] Settings connection evaluation: is_connected=true, token_expiry=1780517054, now=1780513454
+[2026-06-03 19:30:15] 🔁 Token endpoint responded with HTTP code: 200
+[2026-06-03 19:30:15] 🔁 Token endpoint response body: {"access_token":"1000.afc9f1ef0e84d1db736bd527f473ac0b.138f563fe8ac57164f544dddd22cbd8c","scope":"ZohoCRM.modules.ALL ZohoCRM.settings.ALL ZohoCRM.users.ALL","api_domain":"https://www.zohoapis.com","token_type":"Bearer","expires_in":3600}
+[2026-06-03 19:30:15] 🔐 Access token received from Zoho (before save): 1000.afc9f1ef0e84d1db736bd527f473ac0b.138f563fe8ac57164f544dddd22cbd8c
+[2026-06-03 19:30:15] update_option('racrm_access_token') returned: true
+[2026-06-03 19:30:15] update_option('racrm_token_expiry') returned: true
+[2026-06-03 19:30:15] update_option('racrm_token_last_refresh') returned: true
+[2026-06-03 19:30:15] Saved access token (from DB): '1000.afc9f1ef0e84d1db736bd527f473ac0b.138f563fe8ac57164f544dddd22cbd8c'
+[2026-06-03 19:30:15] Saved token expiry (from DB): 1780518615
+[2026-06-03 19:30:15] Connection status after save: connected (expiry=1780518615, now=1780515015)
+[2026-06-03 19:30:15] ✅ Access token refreshed successfully. Expires in 3600s.
+[2026-06-03 19:30:15] Settings page read: access_token_present=yes, token_expiry=1780518615, last_refresh=1780515015
+[2026-06-03 19:30:15] Settings connection evaluation: is_connected=true, token_expiry=1780518615, now=1780515015
+[2026-06-03 19:30:39] 🛒 Order #286230 loaded for CRM Deal creation.
+[2026-06-03 19:30:39] 📦 CRM Payload for Order #286230: {"data":[{"Deal_Name":"Order | WC Order #286230","Stage":"New order","First_Name":"Michael","Last_Name":"Mmanga","Email":"michael.mmanga@webhostingguru.io","Phone":"0788519900","Street":"33 Caymans Complex","Citt":"","State":"","Zip_Code":"","Country":"","Amount":7999,"Expected_Revenue":7999,"Lead_Source":"Online Order","Payment_Option":"","Description":"WC Order #286230\n\nCustomer:\nMichael Mmanga\n\nEmail:\nmichael.mmanga@webhostingguru.io\n\nPhone:\n0788519900\n\nOrder Total:\nZAR 7999.00","Invoice_Number":"","Invoice_Number1":""}]}
+[2026-06-03 19:30:39] 🔑 Access token is still valid (3576s remaining).
+[2026-06-03 19:30:39] ✅ API Request using token: 1000.afc9f...
+[2026-06-03 19:30:39] 🌐 API Request: POST https://www.zohoapis.com/crm/v2/Deals
+[2026-06-03 19:30:39] 📦 Request Body: {"data":[{"Deal_Name":"Order | WC Order #286230","Stage":"New order","First_Name":"Michael","Last_Name":"Mmanga","Email":"michael.mmanga@webhostingguru.io","Phone":"0788519900","Street":"33 Caymans Complex","Citt":"","State":"","Zip_Code":"","Country":"","Amount":7999,"Expected_Revenue":7999,"Lead_Source":"Online Order","Payment_Option":"","Description":"WC Order #286230\n\nCustomer:\nMichael Mmanga\n\nEmail:\nmichael.mmanga@webhostingguru.io\n\nPhone:\n0788519900\n\nOrder Total:\nZAR 7999.00","Invoice_Number":"","Invoice_Number1":""}]}
+[2026-06-03 19:30:40] 📩 API Response Code: 201
+[2026-06-03 19:30:40] ✅ CRM Deal created successfully for Order #286230. Deal ID: 6597481000014688001
+[2026-06-03 19:33:41] 🛒 Order #286308 loaded for CRM Deal creation.
+[2026-06-03 19:33:41] 📦 CRM Payload for Order #286308: {"data":[{"Deal_Name":"Order | WC Order #286308","Stage":"New order","First_Name":"John","Last_Name":"Claassen","Email":"john@jcb-construction.co.za","Phone":"0836549474","Street":"39 Zanddrift Estate","Citt":"Paarl","State":"WC","Zip_Code":"7646","Country":"ZA","Amount":15299,"Expected_Revenue":15299,"Lead_Source":"Online Order","Payment_Option":"EFT - Direct Payment to Right Air","Description":"WC Order #286308\n\nCustomer:\nJohn Claassen\n\nEmail:\njohn@jcb-construction.co.za\n\nPhone:\n0836549474\n\nOrder Total:\nZAR 15299.00","Invoice_Number":"","Invoice_Number1":""}]}
+[2026-06-03 19:33:41] 🔑 Access token is still valid (3394s remaining).
+[2026-06-03 19:33:41] ✅ API Request using token: 1000.afc9f...
+[2026-06-03 19:33:41] 🌐 API Request: POST https://www.zohoapis.com/crm/v2/Deals
+[2026-06-03 19:33:41] 📦 Request Body: {"data":[{"Deal_Name":"Order | WC Order #286308","Stage":"New order","First_Name":"John","Last_Name":"Claassen","Email":"john@jcb-construction.co.za","Phone":"0836549474","Street":"39 Zanddrift Estate","Citt":"Paarl","State":"WC","Zip_Code":"7646","Country":"ZA","Amount":15299,"Expected_Revenue":15299,"Lead_Source":"Online Order","Payment_Option":"EFT - Direct Payment to Right Air","Description":"WC Order #286308\n\nCustomer:\nJohn Claassen\n\nEmail:\njohn@jcb-construction.co.za\n\nPhone:\n0836549474\n\nOrder Total:\nZAR 15299.00","Invoice_Number":"","Invoice_Number1":""}]}
+[2026-06-03 19:33:42] 📩 API Response Code: 201
+[2026-06-03 19:33:42] ✅ CRM Deal created successfully for Order #286308. Deal ID: 6597481000014688008
