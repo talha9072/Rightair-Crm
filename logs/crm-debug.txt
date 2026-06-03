@@ -1,0 +1,5 @@
+[2026-06-03 14:13:10] ⚙️ Settings updated by Shahid
+[2026-06-03 14:14:01] ✅ Access token refreshed successfully. Expires in 3600s.
+[2026-06-03 14:18:35] ✅ Access token refreshed successfully. Expires in 3600s.
+[2026-06-03 14:18:46] 🌐 API Request: GET https://www.zohoapis.com/crm/v8/users
+[2026-06-03 14:18:47] 📩 API Response Code: 200
