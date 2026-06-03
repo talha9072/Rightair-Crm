@@ -76,8 +76,13 @@ function racrm_render_settings_page() {
     $token_expiry  = get_option('racrm_token_expiry', 0);
     $last_refresh  = get_option('racrm_token_last_refresh', 0);
 
+    // Log the values read from the database for debugging
+    racrm_log("Settings page read: access_token_present=" . (!empty($access_token) ? 'yes' : 'no') . ", token_expiry=" . var_export($token_expiry, true) . ", last_refresh=" . var_export($last_refresh, true));
+
     // Connection Status check
-    $is_connected = !empty($access_token) && $token_expiry > time();
+    $is_connected = !empty($access_token) && intval($token_expiry) > time();
+
+    racrm_log("Settings connection evaluation: is_connected=" . ($is_connected ? 'true' : 'false') . ", token_expiry=" . var_export($token_expiry, true) . ", now=" . time());
     ?>
     <div class="wrap">
         <h1>Right Air CRM Settings</h1>

@@ -32,6 +32,8 @@ function racrm_api_request($method, $endpoint, $body = []) {
         return false;
     }
 
+    racrm_log("✅ API Request using token: " . substr($token, 0, 10) . "...");
+
     $args = [
         'method'    => $method,
         'headers'   => [
