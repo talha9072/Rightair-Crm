@@ -122,19 +122,29 @@ function racrm_create_deal_from_order($order_id) {
         racrm_log("[CRM] Attaching account to deal: " . $account_id);
     }
 
-    // 2. Map Payment Option
+    // 2. Map Payment Option -> CRM Payment_Status (picklist value)
     $payment_method = $order->get_payment_method();
-    $payment_option = '';
-    
+    $payment_status = '';
+
+    // WooCommerce payment method => Zoho CRM Payment_Status picklist value.
+    // Verified against live CRM behaviour: the field does NOT use separate API
+    // values, so the visible picklist option string must be sent verbatim.
     $payment_mapping = [
         'bacs'    => 'EFT - Direct Payment to Right Air',
+        'eft'     => 'EFT - Direct Payment to Right Air',
         'ozow'    => 'Ozow',
         'payfast' => 'PayFast - Credit Card Payments',
     ];
 
+    racrm_log("[CRM] Woo Payment Method: " . ($payment_method ?: 'none'));
+
     if (isset($payment_mapping[$payment_method])) {
-        $payment_option = $payment_mapping[$payment_method];
+        $payment_status = $payment_mapping[$payment_method];
+    } else {
+        racrm_log("[CRM] Unmapped payment gateway: " . ($payment_method ?: 'none'));
     }
+
+    racrm_log("[CRM] CRM Payment_Status Value: " . ($payment_status !== '' ? $payment_status : '(empty)'));
 
     // 3. Build Description
     $description = sprintf(
@@ -164,7 +174,7 @@ function racrm_create_deal_from_order($order_id) {
         'Amount'         => floatval($order->get_total()),
         'Expected_Revenue' => floatval($order->get_total()),
         'Lead_Source'    => 'Online Order',
-        'Payment_Option' => $payment_option,
+        'Payment_Status' => $payment_status,
         'Description'    => $description,
         // Fields to leave empty explicitly or just not send
         'Invoice_Number' => '',
