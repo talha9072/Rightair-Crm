@@ -119,21 +119,38 @@ function racrm_handle_books_invoice_webhook($request) {
 /**
  * Extract the fields we care about from a Books webhook payload.
  *
- * Accepts a variety of key names because Zoho Books workflow payloads can
- * be shaped differently depending on how the webhook template was built.
+ * Zoho Books sends the invoice fields nested under an "invoice" key. We read
+ * from that wrapper when present, and fall back to the top level so flat
+ * payloads (or custom webhook templates) remain supported.
  *
  * @param array $payload
  * @return array { invoice_id, invoice_number, order_number }
  */
 function racrm_parse_books_invoice_payload($payload) {
-    $invoice_id     = racrm_payload_first($payload, ['invoice_id', 'Invoice_ID', 'invoiceid']);
-    $invoice_number = racrm_payload_first($payload, ['invoice_number', 'Invoice_Number', 'invoicenumber', 'number']);
-    $reference      = racrm_payload_first($payload, ['reference_number', 'Reference_Number', 'referencenumber', 'reference']);
+    // Prefer the nested "invoice" object Zoho Books actually sends.
+    $source = $payload;
+    if (isset($payload['invoice']) && is_array($payload['invoice'])) {
+        $source = $payload['invoice'];
+    }
+
+    $invoice_id     = racrm_payload_first($source, ['invoice_id', 'Invoice_ID', 'invoiceid']);
+    $invoice_number = racrm_payload_first($source, ['invoice_number', 'Invoice_Number', 'invoicenumber', 'number']);
+    $reference      = racrm_payload_first($source, ['reference_number', 'Reference_Number', 'referencenumber', 'reference']);
+
+    $invoice_id     = trim((string) $invoice_id);
+    $invoice_number = trim((string) $invoice_number);
+    $reference      = trim((string) $reference);
+    $order_number   = racrm_extract_order_number($reference);
+
+    racrm_log("[Invoice Queue] Parsed invoice_id={$invoice_id}");
+    racrm_log("[Invoice Queue] Parsed invoice_number={$invoice_number}");
+    racrm_log("[Invoice Queue] Parsed reference_number={$reference}");
+    racrm_log("[Invoice Queue] Parsed order_number={$order_number}");
 
     return [
-        'invoice_id'     => trim((string) $invoice_id),
-        'invoice_number' => trim((string) $invoice_number),
-        'order_number'   => racrm_extract_order_number($reference),
+        'invoice_id'     => $invoice_id,
+        'invoice_number' => $invoice_number,
+        'order_number'   => $order_number,
     ];
 }
 
