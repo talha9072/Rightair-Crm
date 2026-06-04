@@ -19,11 +19,14 @@ function racrm_find_contact_by_email($email) {
         return false;
     }
 
-    racrm_log("[CRM] Searching contact by email: {$email}");
+    racrm_log("[CRM] Searching Contact");
+    racrm_log("[CRM] Email: {$email}");
 
     // Using Zoho CRM Search API
     $endpoint = "/Contacts/search?email=" . urlencode($email);
     $response = racrm_api_get($endpoint);
+
+    racrm_log("[CRM] Contact Search Response: " . json_encode($response));
 
     if (isset($response['data']) && is_array($response['data']) && count($response['data']) > 0) {
         $contact = $response['data'][0];
@@ -42,13 +45,17 @@ function racrm_find_contact_by_email($email) {
  * @return string|bool Contact ID on success, false on failure.
  */
 function racrm_create_contact($contact_data) {
-    racrm_log("[CRM] Creating contact for: " . ($contact_data['Email'] ?? 'Unknown'));
+    racrm_log("[CRM] Creating Contact for: " . ($contact_data['Email'] ?? 'Unknown'));
 
     $payload = [
         'data' => [$contact_data]
     ];
 
+    racrm_log("[CRM] Contact Payload: " . json_encode($payload));
+
     $response = racrm_api_post('/Contacts', $payload);
+
+    racrm_log("[CRM] Contact Create Response: " . json_encode($response));
 
     if (!empty($response['data'][0]['code']) && $response['data'][0]['code'] === 'SUCCESS') {
         $contact_id = $response['data'][0]['details']['id'];

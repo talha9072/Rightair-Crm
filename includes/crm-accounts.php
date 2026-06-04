@@ -20,13 +20,17 @@ function racrm_create_account($account_data) {
         return false;
     }
 
-    racrm_log("[CRM] Creating account: " . $account_data['Account_Name']);
+    racrm_log("[CRM] Creating Account: " . $account_data['Account_Name']);
 
     $payload = [
         'data' => [$account_data]
     ];
 
+    racrm_log("[CRM] Account Payload: " . json_encode($payload));
+
     $response = racrm_api_post('/Accounts', $payload);
+
+    racrm_log("[CRM] Account Create Response: " . json_encode($response));
 
     if (!empty($response['data'][0]['code']) && $response['data'][0]['code'] === 'SUCCESS') {
         $account_id = $response['data'][0]['details']['id'];

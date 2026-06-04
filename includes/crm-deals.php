@@ -21,11 +21,12 @@ function racrm_create_deal_from_order($order_id) {
 
     $order = wc_get_order($order_id);
     if (!$order) {
-        racrm_log("❌ Create Deal failed: Order #{$order_id} not found.");
+        racrm_log("[CRM] Create Deal failed: Order #{$order_id} not found.");
         return new WP_Error('order_not_found', "Order #{$order_id} not found.");
     }
 
-    racrm_log("🛒 Order #{$order_id} loaded for CRM Deal creation.");
+    racrm_log("[CRM] ==================================================");
+    racrm_log("[CRM] Starting CRM sync for Order #{$order_id}");
 
     // 1. Prepare Customer Data
     $first_name = $order->get_billing_first_name();
@@ -39,31 +40,59 @@ function racrm_create_deal_from_order($order_id) {
     $postcode   = $order->get_billing_postcode();
     $country    = $order->get_billing_country();
 
+    racrm_log("[CRM] WooCommerce Status: " . $order->get_status());
+    racrm_log("[CRM] Customer Email: {$email}");
+    racrm_log("[CRM] ==================================================");
+
     // 1.1 Contact & Account Lookup Flow
     $account_id = '';
+    $contact_id = '';
+
+    racrm_log("[CRM] Searching Contact");
+    racrm_log("[CRM] Email: {$email}");
+    $t_contact = microtime(true);
     $contact = racrm_find_contact_by_email($email);
+    racrm_log("[CRM] Contact Search took " . round((microtime(true) - $t_contact) * 1000) . "ms (Order #{$order_id})");
 
     if ($contact) {
+        $contact_id = isset($contact['id']) ? $contact['id'] : '';
+        racrm_log("[CRM] Contact Found");
+        racrm_log("[CRM] Contact ID: {$contact_id}");
+
+        racrm_log("[CRM] Searching Account (from contact)");
         $account_id = racrm_get_account_from_contact($contact);
+        if ($account_id) {
+            racrm_log("[CRM] Account Found");
+            racrm_log("[CRM] Account ID: {$account_id}");
+        } else {
+            racrm_log("[CRM] Account not linked to contact {$contact_id} (Order #{$order_id})");
+        }
     } else {
-        racrm_log("[CRM] Contact not found");
-        
+        racrm_log("[CRM] Contact not found - creating Account then Contact (Order #{$order_id})");
+
         // Create Account
-        racrm_log("[CRM] Creating account");
-        $account_id = racrm_create_account([
-            'Account_Name' => $full_name,
-            'Phone'        => $phone,
+        racrm_log("[CRM] Creating Account");
+        $account_payload = [
+            'Account_Name'   => $full_name,
+            'Phone'          => $phone,
             'Billing_Street' => $address,
             'Billing_City'   => $city,
             'Billing_State'  => $state,
             'Billing_Code'   => $postcode,
             'Billing_Country'=> $country,
-        ]);
+        ];
+        $t_account = microtime(true);
+        $account_id = racrm_create_account($account_payload);
+        racrm_log("[CRM] Account Create took " . round((microtime(true) - $t_account) * 1000) . "ms (Order #{$order_id})");
 
         if ($account_id) {
+            racrm_log("[CRM] Account Created");
+            racrm_log("[CRM] Account ID: {$account_id}");
+
             // Create Contact
-            racrm_log("[CRM] Creating contact");
-            racrm_create_contact([
+            racrm_log("[CRM] Creating Contact");
+            $t_contact_create = microtime(true);
+            $contact_id = racrm_create_contact([
                 'First_Name'   => $first_name,
                 'Last_Name'    => $last_name,
                 'Email'        => $email,
@@ -72,6 +101,20 @@ function racrm_create_deal_from_order($order_id) {
                     'id' => $account_id
                 ]
             ]);
+            racrm_log("[CRM] Contact Create took " . round((microtime(true) - $t_contact_create) * 1000) . "ms (Order #{$order_id})");
+
+            if ($contact_id) {
+                racrm_log("[CRM] Contact Created");
+                racrm_log("[CRM] Contact ID: {$contact_id}");
+            } else {
+                racrm_log("[CRM] ERROR");
+                racrm_log("[CRM] Step: Contact Creation");
+                racrm_log("[CRM] Order: {$order_id}");
+            }
+        } else {
+            racrm_log("[CRM] ERROR");
+            racrm_log("[CRM] Step: Account Creation");
+            racrm_log("[CRM] Order: {$order_id}");
         }
     }
 
@@ -139,25 +182,48 @@ function racrm_create_deal_from_order($order_id) {
         'data' => [$deal_data]
     ];
 
-    racrm_log("📦 CRM Payload for Order #{$order_id}: " . json_encode($deal_payload));
+    racrm_log("[CRM] Creating Deal");
+    racrm_log("[CRM] Deal Payload: " . json_encode($deal_payload));
+    racrm_log("[CRM] Deal API Endpoint: /Deals");
 
     // 5. Send to Zoho
+    $t_deal = microtime(true);
     $response = racrm_api_post('/Deals', $deal_payload);
+    racrm_log("[CRM] Deal Create took " . round((microtime(true) - $t_deal) * 1000) . "ms (Order #{$order_id})");
+
+    $deal_status_code = isset($response['data'][0]['code']) ? $response['data'][0]['code'] : 'UNKNOWN';
+    racrm_log("[CRM] Deal API Response Code: {$deal_status_code}");
+    racrm_log("[CRM] Deal API Response: " . json_encode($response));
 
     if (!$response) {
-        racrm_log("❌ CRM API Request failed for Order #{$order_id}.");
+        racrm_log("[CRM] ERROR");
+        racrm_log("[CRM] Step: Deal Creation");
+        racrm_log("[CRM] Response: CRM API Request failed (no response)");
+        racrm_log("[CRM] Order: {$order_id}");
+        racrm_log("[CRM] CRM Sync Failed");
+        racrm_log("[CRM] Order: {$order_id}");
+        racrm_log("[CRM] Failure Step: Deal Creation");
+        racrm_log("[CRM] Reason: CRM API Request failed");
         return new WP_Error('api_failed', 'CRM API Request failed. Check logs.');
     }
 
     // 6. Handle Response
     if (!empty($response['data'][0]['code']) && $response['data'][0]['code'] === 'SUCCESS') {
         $deal_id = $response['data'][0]['details']['id'];
-        
+
         // Save to order meta
         $order->update_meta_data('_racrm_deal_id', $deal_id);
         $order->save();
 
-        racrm_log("✅ CRM Deal created successfully for Order #{$order_id}. Deal ID: {$deal_id}");
+        racrm_log("[CRM] Deal ID: {$deal_id}");
+        racrm_log("[CRM] Deal Name: " . $deal_data['Deal_Name']);
+        racrm_log("[CRM] ==================================================");
+        racrm_log("[CRM] CRM Sync Complete");
+        racrm_log("[CRM] Order: {$order_id}");
+        racrm_log("[CRM] Account ID: " . ($account_id ?: 'none'));
+        racrm_log("[CRM] Contact ID: " . ($contact_id ?: 'none'));
+        racrm_log("[CRM] Deal ID: {$deal_id}");
+        racrm_log("[CRM] ==================================================");
 
         return [
             'id'        => $deal_id,
@@ -165,8 +231,17 @@ function racrm_create_deal_from_order($order_id) {
         ];
     } else {
         $error_json = json_encode($response);
-        racrm_log("❌ CRM Validation/Creation failed for Order #{$order_id}. Response: " . $error_json);
         $error_msg = isset($response['data'][0]['message']) ? $response['data'][0]['message'] : 'Unknown CRM error';
+
+        racrm_log("[CRM] ERROR");
+        racrm_log("[CRM] Step: Deal Creation");
+        racrm_log("[CRM] Response: " . $error_json);
+        racrm_log("[CRM] Order: {$order_id}");
+        racrm_log("[CRM] CRM Sync Failed");
+        racrm_log("[CRM] Order: {$order_id}");
+        racrm_log("[CRM] Failure Step: Deal Creation");
+        racrm_log("[CRM] Reason: {$error_msg}");
+
         return new WP_Error('crm_error', 'CRM Error: ' . $error_msg);
     }
 }

@@ -65,7 +65,7 @@ function racrm_api_request($method, $endpoint, $body = []) {
     $data = json_decode($response_body, true);
 
     racrm_log("📩 API Response Code: {$code}");
-    // racrm_log("📩 API Response Body: " . $response_body); // Optional: verbose logging
+    racrm_log("📩 API Response Body: " . $response_body);
 
     if ($code >= 200 && $code < 300) {
         return $data;
