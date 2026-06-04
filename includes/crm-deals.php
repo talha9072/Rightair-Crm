@@ -30,6 +30,7 @@ function racrm_create_deal_from_order($order_id) {
     // 1. Prepare Customer Data
     $first_name = $order->get_billing_first_name();
     $last_name  = $order->get_billing_last_name();
+    $full_name  = trim($first_name . ' ' . $last_name);
     $email      = $order->get_billing_email();
     $phone      = $order->get_billing_phone();
     $address    = $order->get_billing_address_1();
@@ -37,6 +38,46 @@ function racrm_create_deal_from_order($order_id) {
     $state      = $order->get_billing_state();
     $postcode   = $order->get_billing_postcode();
     $country    = $order->get_billing_country();
+
+    // 1.1 Contact & Account Lookup Flow
+    $account_id = '';
+    $contact = racrm_find_contact_by_email($email);
+
+    if ($contact) {
+        $account_id = racrm_get_account_from_contact($contact);
+    } else {
+        racrm_log("[CRM] Contact not found");
+        
+        // Create Account
+        racrm_log("[CRM] Creating account");
+        $account_id = racrm_create_account([
+            'Account_Name' => $full_name,
+            'Phone'        => $phone,
+            'Billing_Street' => $address,
+            'Billing_City'   => $city,
+            'Billing_State'  => $state,
+            'Billing_Code'   => $postcode,
+            'Billing_Country'=> $country,
+        ]);
+
+        if ($account_id) {
+            // Create Contact
+            racrm_log("[CRM] Creating contact");
+            racrm_create_contact([
+                'First_Name'   => $first_name,
+                'Last_Name'    => $last_name,
+                'Email'        => $email,
+                'Phone'        => $phone,
+                'Account_Name' => [
+                    'id' => $account_id
+                ]
+            ]);
+        }
+    }
+
+    if ($account_id) {
+        racrm_log("[CRM] Attaching account to deal: " . $account_id);
+    }
 
     // 2. Map Payment Option
     $payment_method = $order->get_payment_method();
@@ -65,30 +106,37 @@ function racrm_create_deal_from_order($order_id) {
     );
 
     // 4. Construct CRM Payload
+    $deal_data = [
+        'Deal_Name'      => 'Order | WC Order #' . $order_id,
+        'Stage'          => 'New order',
+        'First_Name'     => $first_name,
+        'Last_Name'      => $last_name,
+        'Email'          => $email,
+        'Phone'          => $phone,
+        'Street'         => $address,
+        'Citt'           => $city, // Mapping requested 'Citt' instead of 'City'
+        'State'          => $state,
+        'Zip_Code'       => $postcode,
+        'Country'        => $country,
+        'Amount'         => floatval($order->get_total()),
+        'Expected_Revenue' => floatval($order->get_total()),
+        'Lead_Source'    => 'Online Order',
+        'Payment_Option' => $payment_option,
+        'Description'    => $description,
+        // Fields to leave empty explicitly or just not send
+        'Invoice_Number' => '',
+        'Invoice_Number1'=> '',
+    ];
+
+    // Attach Account if exists
+    if ($account_id) {
+        $deal_data['Account_Name'] = [
+            'id' => $account_id
+        ];
+    }
+
     $deal_payload = [
-        'data' => [
-            [
-                'Deal_Name'      => 'Order | WC Order #' . $order_id,
-                'Stage'          => 'New order',
-                'First_Name'     => $first_name,
-                'Last_Name'      => $last_name,
-                'Email'          => $email,
-                'Phone'          => $phone,
-                'Street'         => $address,
-                'Citt'           => $city, // Mapping requested 'Citt' instead of 'City'
-                'State'          => $state,
-                'Zip_Code'       => $postcode,
-                'Country'        => $country,
-                'Amount'         => floatval($order->get_total()),
-                'Expected_Revenue' => floatval($order->get_total()),
-                'Lead_Source'    => 'Online Order',
-                'Payment_Option' => $payment_option,
-                'Description'    => $description,
-                // Fields to leave empty explicitly or just not send
-                'Invoice_Number' => '',
-                'Invoice_Number1'=> '',
-            ]
-        ]
+        'data' => [$deal_data]
     ];
 
     racrm_log("📦 CRM Payload for Order #{$order_id}: " . json_encode($deal_payload));

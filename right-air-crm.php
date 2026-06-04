@@ -28,6 +28,7 @@ require_once RACRM_PLUGIN_DIR . 'includes/crm-api.php';
 require_once RACRM_PLUGIN_DIR . 'includes/settings.php';
 require_once RACRM_PLUGIN_DIR . 'includes/crm-deals.php';
 require_once RACRM_PLUGIN_DIR . 'includes/crm-contacts.php';
+require_once RACRM_PLUGIN_DIR . 'includes/crm-accounts.php';
 
 /**
  * Show admin warnings if credentials are missing
