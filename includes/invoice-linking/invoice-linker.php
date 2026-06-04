@@ -103,14 +103,14 @@ function racrm_find_deal_id_by_order_number($order_number) {
  */
 function racrm_find_invoice_record_id($invoice_id) {
     $module   = racrm_invoice_module_name();
-    $criteria = '(Invoice_ID:equals:' . $invoice_id . ')';
+    $criteria = '(' . $module . '_External_Id__s:equals:' . $invoice_id . ')';
 
     $endpoint = '/' . $module . '/search?criteria=' . rawurlencode($criteria);
     $response = racrm_api_get($endpoint);
 
     if (!empty($response['data'][0]['id'])) {
         $record_id = $response['data'][0]['id'];
-        racrm_log("✅ CRM Invoice found for Invoice_ID {$invoice_id}: {$record_id}");
+        racrm_log("[Invoice Queue] Invoice found: {$record_id}");
         return $record_id;
     }
 
@@ -128,6 +128,8 @@ function racrm_find_invoice_record_id($invoice_id) {
 function racrm_attach_invoice_to_deal($invoice_record_id, $deal_id, $queue_id) {
     $module = racrm_invoice_module_name();
 
+    racrm_log("[Invoice Queue] Linking invoice {$invoice_record_id} to deal {$deal_id}");
+
     $payload = [
         'data' => [
             [
@@ -140,6 +142,7 @@ function racrm_attach_invoice_to_deal($invoice_record_id, $deal_id, $queue_id) {
     $response = racrm_api_put('/' . $module, $payload);
 
     if (!empty($response['data'][0]['code']) && $response['data'][0]['code'] === 'SUCCESS') {
+        racrm_log("[Invoice Queue] Invoice linked successfully");
         racrm_log("🔗 Linked CRM Invoice {$invoice_record_id} to Deal {$deal_id} (queue #{$queue_id}).");
         return true;
     }
