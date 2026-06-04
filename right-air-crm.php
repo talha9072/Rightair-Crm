@@ -29,6 +29,22 @@ require_once RACRM_PLUGIN_DIR . 'includes/settings.php';
 require_once RACRM_PLUGIN_DIR . 'includes/crm-deals.php';
 require_once RACRM_PLUGIN_DIR . 'includes/crm-contacts.php';
 require_once RACRM_PLUGIN_DIR . 'includes/crm-accounts.php';
+require_once RACRM_PLUGIN_DIR . 'includes/invoice-linking/invoice-linking.php';
+
+/**
+ * Activation: install the invoice queue table and schedule the cron worker.
+ */
+register_activation_hook(__FILE__, function() {
+    racrm_install_invoice_queue_table();
+    racrm_schedule_invoice_cron();
+});
+
+/**
+ * Deactivation: clear the scheduled cron worker.
+ */
+register_deactivation_hook(__FILE__, function() {
+    racrm_unschedule_invoice_cron();
+});
 
 /**
  * Show admin warnings if credentials are missing

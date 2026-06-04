@@ -30,7 +30,92 @@ add_action('admin_menu', function() {
         'right-air-crm-create-deal',
         'racrm_render_create_deal_page'
     );
+
+    add_submenu_page(
+        'right-air-crm-settings',
+        'Invoice Linking',
+        'Invoice Linking',
+        'manage_options',
+        'right-air-crm-invoice-linking',
+        'racrm_render_invoice_linking_page'
+    );
 });
+
+/**
+ * Render the Invoice Linking admin page.
+ *
+ * Provides the mandatory webhook secret setting and a manual
+ * "Run Queue Now" button for testing without waiting for cron.
+ */
+function racrm_render_invoice_linking_page() {
+    $message = '';
+
+    // Save the webhook secret.
+    if (isset($_POST['racrm_save_invoice_settings'])) {
+        check_admin_referer('racrm_invoice_settings_action');
+        update_option('racrm_books_webhook_secret', sanitize_text_field($_POST['webhook_secret']));
+        update_option('racrm_invoice_module', sanitize_text_field($_POST['invoice_module']));
+        $message .= '<div class="updated"><p>Invoice linking settings saved.</p></div>';
+    }
+
+    // Manually run the queue worker.
+    if (isset($_POST['racrm_run_queue_now'])) {
+        check_admin_referer('racrm_invoice_settings_action');
+        $result = racrm_run_invoice_queue(20);
+        $message .= sprintf(
+            '<div class="updated"><p><strong>Queue run complete.</strong> Processed: %d &nbsp;|&nbsp; Failed: %d &nbsp;|&nbsp; Pending: %d</p></div>',
+            (int) $result['processed'],
+            (int) $result['failed'],
+            (int) $result['pending']
+        );
+    }
+
+    $webhook_secret = get_option('racrm_books_webhook_secret', '');
+    $invoice_module = get_option('racrm_invoice_module', 'CustomModule5001');
+    $counts         = function_exists('racrm_invoice_queue_counts') ? racrm_invoice_queue_counts() : ['processed' => 0, 'failed' => 0, 'pending' => 0];
+    $webhook_url    = esc_url(rest_url('racrm/v1/books-invoice'));
+    ?>
+    <div class="wrap">
+        <h1>Invoice Linking</h1>
+        <?php echo $message; ?>
+        <p>Links existing Zoho Books invoices (CRM Invoice records) to existing CRM Deals. This module never creates Accounts, Contacts, Deals or Invoices.</p>
+
+        <h2>Queue Status</h2>
+        <p>
+            <strong>Processed:</strong> <?php echo (int) $counts['processed']; ?> &nbsp;|&nbsp;
+            <strong>Failed:</strong> <?php echo (int) $counts['failed']; ?> &nbsp;|&nbsp;
+            <strong>Pending:</strong> <?php echo (int) $counts['pending']; ?>
+        </p>
+
+        <form method="post" action="">
+            <?php wp_nonce_field('racrm_invoice_settings_action'); ?>
+            <table class="form-table">
+                <tr>
+                    <th scope="row"><label for="webhook_secret">Webhook Secret</label></th>
+                    <td>
+                        <input name="webhook_secret" type="text" id="webhook_secret" value="<?php echo esc_attr($webhook_secret); ?>" class="large-text">
+                        <p class="description"><strong>Required.</strong> Zoho Books must send this value in the <code>X-RACRM-Token</code> header. Requests without a matching token are rejected.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="invoice_module">CRM Invoice Module</label></th>
+                    <td>
+                        <input name="invoice_module" type="text" id="invoice_module" value="<?php echo esc_attr($invoice_module); ?>" class="regular-text">
+                        <p class="description">API name of the CRM module holding invoice records. Default: <code>CustomModule5001</code></p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Webhook URL</th>
+                    <td><code><?php echo $webhook_url; ?></code></td>
+                </tr>
+            </table>
+            <?php submit_button('Save Settings', 'primary', 'racrm_save_invoice_settings', false); ?>
+            &nbsp;
+            <?php submit_button('Run Queue Now', 'secondary', 'racrm_run_queue_now', false); ?>
+        </form>
+    </div>
+    <?php
+}
 
 /**
  * Render the manual Deal creation page
