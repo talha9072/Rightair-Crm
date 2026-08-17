@@ -147,6 +147,14 @@ function racrm_parse_books_invoice_payload($payload) {
     racrm_log("[Invoice Queue] Parsed reference_number={$reference}");
     racrm_log("[Invoice Queue] Parsed order_number={$order_number}");
 
+    if ($order_number === '') {
+        racrm_log(
+            '[Invoice Queue] Reference is not a WooCommerce order' .
+            ($reference !== '' ? " ({$reference})" : ' (no reference supplied)') .
+            ' - invoice will be skipped, not retried.'
+        );
+    }
+
     return [
         'invoice_id'     => $invoice_id,
         'invoice_number' => $invoice_number,
@@ -171,16 +179,48 @@ function racrm_payload_first($payload, $keys) {
 }
 
 /**
- * Extract the numeric WooCommerce order number from a reference string.
+ * Extract the WooCommerce order number from a Books invoice reference string.
  *
- * Example: "WC Order #293671" => "293671".
+ * Only references that actually identify a WooCommerce order are accepted.
+ * The WooCommerce → CRM integration always writes the reference as
+ * "WC Order #{order_id}" (matching the Deal name built in crm-deals.php), so
+ * that shape is what we match against - tolerating case, spacing and a missing
+ * "#" so a hand-edited reference still works.
+ *
+ * Anything else is NOT a WooCommerce order and returns an empty string:
+ *
+ *   "WC Order #295326"  => "295326"   (WooCommerce order)
+ *   "SO02276"           => ""         (Zoho Sales Order - no Woo order exists)
+ *   "217919396"         => ""         (unrelated Zoho reference)
+ *   ""                  => ""         (no reference at all)
+ *
+ * Previously this grabbed the first run of digits from any reference, which
+ * turned "SO02276" into order "02276" and sent the worker hunting for a Deal
+ * named "Order | WC Order #02276" - a lookup that can never succeed, retried
+ * 20 times per invoice before being marked failed.
  *
  * @param string $reference
- * @return string Order number, or empty string if none found.
+ * @return string Order number, or empty string if the reference is not a
+ *                WooCommerce order reference.
  */
 function racrm_extract_order_number($reference) {
-    if (preg_match('/(\d+)/', (string) $reference, $matches)) {
-        return $matches[1];
+    $reference    = trim((string) $reference);
+    $order_number = '';
+
+    if ($reference !== '' && preg_match('/WC\s*Order\s*#?\s*(\d+)/i', $reference, $matches)) {
+        // Drop any leading zeros so the value matches the WooCommerce order id.
+        $order_number = (string) (int) $matches[1];
     }
-    return '';
+
+    /**
+     * Filter the WooCommerce order number extracted from an invoice reference.
+     *
+     * Allows a differently-formatted reference to be supported without a code
+     * change. Return an empty string to mark the invoice as "no WooCommerce
+     * order", which stops it being retried.
+     *
+     * @param string $order_number
+     * @param string $reference
+     */
+    return (string) apply_filters('racrm_order_number_from_reference', $order_number, $reference);
 }

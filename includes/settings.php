@@ -70,6 +70,41 @@ function racrm_render_invoice_linking_page() {
         );
     }
 
+    // Requeue specific failed records, then immediately retry them.
+    //
+    // Deliberately ID-scoped rather than "retry everything": most failed rows
+    // are invoices with no WooCommerce order at all (Zoho Sales Order
+    // references like "SO02276", or an empty reference_number). Those can never
+    // link, so a blanket retry would burn 20 pointless CRM lookups on each one.
+    if (isset($_POST['racrm_retry_failed'])) {
+        check_admin_referer('racrm_invoice_settings_action');
+
+        $raw_ids = isset($_POST['retry_ids']) ? sanitize_text_field($_POST['retry_ids']) : '';
+        $ids     = array_filter(array_map('absint', preg_split('/[^0-9]+/', $raw_ids)));
+
+        if (empty($ids)) {
+            $message .= '<div class="notice notice-error"><p>Enter at least one queue ID to retry.</p></div>';
+        } else {
+            $requeued = 0;
+            foreach ($ids as $queue_id) {
+                $requeued += racrm_invoice_queue_requeue_failed($queue_id);
+            }
+
+            if ($requeued > 0) {
+                $result = racrm_run_invoice_queue(max(20, $requeued));
+                $message .= sprintf(
+                    '<div class="updated"><p><strong>Requeued %d record(s).</strong> Processed: %d &nbsp;|&nbsp; Failed: %d &nbsp;|&nbsp; Pending: %d</p></div>',
+                    (int) $requeued,
+                    (int) $result['processed'],
+                    (int) $result['failed'],
+                    (int) $result['pending']
+                );
+            } else {
+                $message .= '<div class="notice notice-info"><p>None of those IDs are failed, unprocessed records.</p></div>';
+            }
+        }
+    }
+
     $webhook_secret = get_option('racrm_books_webhook_secret', '');
     $invoice_module = get_option('racrm_invoice_module', 'CustomModule5001');
     $counts         = function_exists('racrm_invoice_queue_counts') ? racrm_invoice_queue_counts() : ['processed' => 0, 'failed' => 0, 'pending' => 0];
@@ -113,6 +148,23 @@ function racrm_render_invoice_linking_page() {
             &nbsp;
             <?php submit_button('Run Queue Now', 'secondary', 'racrm_run_queue_now', false); ?>
         </form>
+
+        <h2>Retry Failed Records</h2>
+        <form method="post" action="">
+            <?php wp_nonce_field('racrm_invoice_settings_action'); ?>
+            <p>
+                <label for="retry_ids">Queue IDs</label>
+                <input name="retry_ids" type="text" id="retry_ids" value="" class="regular-text" placeholder="e.g. 418, 361">
+                <?php submit_button('Retry These Records', 'secondary', 'racrm_retry_failed', false); ?>
+            </p>
+            <p class="description">
+                Resets the given failed records to pending and runs the queue immediately. Use it after
+                creating a Deal that was missing when the invoice first arrived.<br>
+                Only retry rows whose <code>order_number</code> is a real WooCommerce order. Rows with a
+                Zoho Sales Order reference (<code>SO&hellip;</code>) or a blank reference have no
+                WooCommerce order to link to and will simply fail again.
+            </p>
+        </form>
     </div>
     <?php
 }
@@ -127,11 +179,26 @@ function racrm_render_create_deal_page() {
     if (isset($_POST['racrm_manual_create_deal']) && !empty($order_id)) {
         check_admin_referer('racrm_create_deal_action');
 
-        $result = racrm_create_deal_from_order($order_id);
+        // Refuse to create a second Deal for an order that already has one -
+        // re-submitting this form would otherwise duplicate the Deal in Zoho.
+        $existing_order = function_exists('wc_get_order') ? wc_get_order($order_id) : false;
+        $existing_deal  = $existing_order ? $existing_order->get_meta('_racrm_deal_id') : '';
 
+        if (!empty($existing_deal)) {
+            $message = sprintf(
+                '<div class="notice notice-warning"><p><strong>Order %d already has a CRM Deal</strong> (<code>%s</code>). No new Deal was created.</p></div>',
+                (int) $order_id,
+                esc_html($existing_deal)
+            );
+            $result = null;
+        } else {
+            $result = racrm_create_deal_from_order($order_id);
+        }
+
+        // $result stays null when the duplicate guard above already reported.
         if (is_wp_error($result)) {
             $message = '<div class="error"><p>❌ ' . esc_html($result->get_error_message()) . '</p></div>';
-        } else {
+        } elseif (is_array($result)) {
             $message = sprintf(
                 '<div class="updated">
                     <p><strong>✅ CRM Deal Created Successfully</strong></p>

@@ -30,10 +30,18 @@ function racrm_link_invoice_record($record) {
 
     racrm_log("[Invoice Queue] Processing invoice_id={$invoice_id}, order_number={$order_number} (queue #{$record->id})");
 
-    if ($order_number === '' || $invoice_id === '') {
-        racrm_log("[Invoice Queue] Failed: missing order_number or invoice_id (queue #{$record->id}). Not retryable.");
+    if ($invoice_id === '') {
+        racrm_log("[Invoice Queue] Failed: missing invoice_id (queue #{$record->id}). Not retryable.");
         // Nothing we can do with this record; do not retry.
-        return ['success' => false, 'retryable' => false, 'error' => 'Missing order_number or invoice_id'];
+        return ['success' => false, 'retryable' => false, 'error' => 'Missing invoice_id'];
+    }
+
+    // No WooCommerce order number means the invoice was raised against
+    // something other than a Woo order (a Zoho Sales Order, or no reference at
+    // all). There is no Deal to find, so retrying can never help.
+    if ($order_number === '') {
+        racrm_log("[Invoice Queue] Skipped: no WooCommerce order in invoice reference (queue #{$record->id}). Not retryable.");
+        return ['success' => false, 'retryable' => false, 'error' => 'Not a WooCommerce order invoice'];
     }
 
     $deal_id = racrm_find_deal_id_by_order_number($order_number);

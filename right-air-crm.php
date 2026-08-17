@@ -31,6 +31,7 @@ require_once RACRM_PLUGIN_DIR . 'includes/crm-contacts.php';
 require_once RACRM_PLUGIN_DIR . 'includes/crm-accounts.php';
 require_once RACRM_PLUGIN_DIR . 'includes/crm-order-sync.php';
 require_once RACRM_PLUGIN_DIR . 'includes/invoice-linking/invoice-linking.php';
+require_once RACRM_PLUGIN_DIR . 'includes/admin-push-orders.php';
 
 /**
  * Activation: install the invoice queue table and schedule the cron worker.

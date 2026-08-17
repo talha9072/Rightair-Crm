@@ -11,10 +11,18 @@ if (!defined('ABSPATH')) {
 /**
  * Create a Zoho CRM Deal from a WooCommerce Order
  *
- * @param int $order_id
+ * Refuses to create a second Deal for an order that already has one. Every
+ * caller is expected to check first, but the guard lives here as well so that
+ * no current or future entry point can duplicate a Deal in Zoho - a duplicate
+ * is painful to clean up because Books invoices may already be attached to the
+ * original.
+ *
+ * @param int  $order_id
+ * @param bool $force    Skip the duplicate guard. Only for deliberate
+ *                       re-creation (e.g. the Deal was deleted in Zoho).
  * @return array|WP_Error Deal data on success, WP_Error on failure.
  */
-function racrm_create_deal_from_order($order_id) {
+function racrm_create_deal_from_order($order_id, $force = false) {
     if (!function_exists('wc_get_order')) {
         return new WP_Error('wc_missing', 'WooCommerce is not active.');
     }
@@ -23,6 +31,16 @@ function racrm_create_deal_from_order($order_id) {
     if (!$order) {
         racrm_log("[CRM] Create Deal failed: Order #{$order_id} not found.");
         return new WP_Error('order_not_found', "Order #{$order_id} not found.");
+    }
+
+    // Duplicate protection - the last line of defence before the CRM write.
+    $existing_deal_id = $order->get_meta('_racrm_deal_id');
+    if (!$force && !empty($existing_deal_id)) {
+        racrm_log("[CRM] Create Deal refused: Order #{$order_id} already has Deal {$existing_deal_id}.");
+        return new WP_Error(
+            'deal_exists',
+            sprintf('Order #%d already has CRM Deal %s. No new Deal created.', $order_id, $existing_deal_id)
+        );
     }
 
     racrm_log("[CRM] ==================================================");
